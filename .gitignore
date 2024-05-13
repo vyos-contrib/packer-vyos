@@ -2,3 +2,6 @@ local.pkrvars.hcl
 .env
 output-*
 iso/*
+*.code-workspace
+dev/
+*.checksum
