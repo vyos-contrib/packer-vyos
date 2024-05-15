@@ -1,7 +1,7 @@
 #!make
 
 # if not set, set defaults 
-PARALLEL_BUILDS ?= 0
+#PARALLEL_BUILDS ?= 0
 PACKER_LOG ?= 0
 # always use DISPLAY :99
 DISPLAY=:99
@@ -11,8 +11,7 @@ DISPLAY=:99
 # export all
 export
 
-.PHONY: help build init upgrade clean x11
-
+.PHONY: help
 help:
 	@echo "make working:"
 	@echo "- will use local.pkrvars.hcl if exists or vyos.pkrvars.hcl"
@@ -32,31 +31,52 @@ help:
 # endif
 
 
-
-build:
+.PHONY: build1
+build1:
 # if exist local.pkrvars.hcl load it
 ifneq ($(wildcard local.pkrvars.hcl),) 
 	packer build \
 	-var-file=local.pkrvars.hcl \
-	-parallel-builds=$(PARALLEL_BUILDS) \
-	 vyos.pkr.hcl 
+	-parallel-builds=0 \
+	vyos-image1.pkr.hcl
 else
 	packer build \
 	-var-file=vyos.pkrvars.hcl \
-	 -parallel-builds=$(PARALLEL_BUILDS) \
-	vyos.pkr.hcl
+	-parallel-builds=0 \
+	vyos-image1.pkr.hcl
 endif
 
+.PHONY: build2
+build2:
+# if exist local.pkrvars.hcl load it
+ifneq ($(wildcard local.pkrvars.hcl),) 
+	packer build \
+	-var-file=local.pkrvars.hcl \
+	-parallel-builds=0 \
+	vyos-image2.pkr.hcl
+else
+	packer build \
+	-var-file=vyos.pkrvars.hcl \
+	-parallel-builds=0 \
+	vyos-image2.pkr.hcl
+endif
+
+.PHONY: init
 init:
-	packer init vyos.pkr.hcl 
+	packer init vyos-image1.pkr.hcl
+	packer init vyos-image2.pkr.hcl
 
+.PHONY: upgrade
 upgrade:
-	packer init -upgrade vyos.pkr.hcl
+	packer init -upgrade vyos-image1.pkr.hcl
+	packer init -upgrade vyos-image2.pkr.hcl
 
+.PHONY: clean
 clean:
-	rm -rf output-*
+	rm -rf output/*
 
 # you need to run this first to use headless=false
+.PHONY: x11server
 x11server:
 	Xvfb :99 -screen 0 1024x768x16 &
 	export DISPLAY=:99

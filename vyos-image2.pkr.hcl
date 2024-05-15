@@ -1,7 +1,16 @@
+packer {
+  required_plugins {
+    qemu = {
+      version = "~> 1"
+      source  = "github.com/hashicorp/qemu"
+    }
+  }
+}
+
 
 # dont edit those vars below, customize in local.auto.pkrvars.hcl using local.example.pkrvars.hcl
 variable "vm_name" {
-  default = "vyos-1.3.6"
+  default = "vyos-image-1.3.6"
 }
 
 variable "numvcpus" {
@@ -47,12 +56,6 @@ variable "cloud_init" {
   default     = "vyos"
 }
 
-# if true configure grub to use serial console as default
-variable "grub_serial" {
-  type        = bool
-  default     = true
-}
-
 # equuleus:   debian 11 (branch 1.3.*)
 # sagitta:    debian 12 (branch 1.4.*)
 # circinus:   debian 12 (branch 1.5.*)
@@ -89,9 +92,23 @@ variable "sleep_after_grub" {
   default = "45" # in seconds
 }
 
+# set grub_serial=1 to turn grub default=1, ie: use serial console. it is need to adjust on hypervisor
+variable "grub_serial" {
+  type        = bool
+  default     = true
+}
+
+# which kind of datasource should be used
+# nocloud_configdrive => use this as default, will turn on NoCloud, ConfigDrive on cloud-init datasource_list
+# blank - don't set default datasource_list
+variable "cloud_init_datasource" {
+  default = "nocloud_configdrive"
+}
+
 locals {
-  iso_path        = "iso/${var.vm_name}.iso"
-  output_dir      = "output-vyos-${regex_replace(timestamp(), "[: ]", "-")}"
+  iso_path        = "iso/${var.vm_name}.vhd" 
+  #iso_path        = "iso/vyos-1.3.6.qcow2"
+  output_dir      = "output/vyos-image2/${regex_replace(timestamp(), "[: ]", "-")}"
 }
 
 source "qemu" "vyos" {
@@ -106,23 +123,7 @@ source "qemu" "vyos" {
     "set service ssh port '22'<enter><wait>",
     "commit<enter><wait>",
     "save<enter><wait>",
-    # "exit<enter><wait>",
     "exit<enter><wait>",
-    "install image<enter><wait3s>",
-    "Yes<enter><wait>",
-    "Auto<enter><wait>",
-    "<enter><wait>", # vda
-    "Yes<enter><wait5s>",
-    "<enter><wait15s>", #disk size
-    "${var.vm_name}<enter><wait10s>",
-    "<enter><wait2s>",
-    "${var.ssh_password}<enter><wait>",
-    "${var.ssh_password}<enter><wait>",
-    "<enter><wait10s>", #vda
-    #"shutdown -h now<enter>"
-    "reboot now<enter><wait60s>",
-    "${var.ssh_username}<enter><wait>",
-    "${var.ssh_password}<enter><wait>",
   ]
 
   accelerator       = "kvm"
@@ -166,7 +167,8 @@ source "qemu" "vyos" {
     ["-smp", "4"],
     ["-cpu", "host"],
     ["-netdev",  "user,id=user.0,", "hostfwd=tcp::{{ .SSHHostPort }}-:22"],
-    ["-device", "virtio-net,netdev=user.0"]
+    ["-device", "virtio-net,netdev=user.0"],
+    ["-drive", "file=iso/vyos-1.3.6.qcow2,if=virtio,cache=writeback,discard=ignore,format=qcow2"]
   ]
 }
 
@@ -178,13 +180,6 @@ build {
     vm_name           = "${var.vm_name}-${source.name}.qcow2"
     format            = "qcow2"
   }
-
-  # source "source.raw.vyos" {
-  #   name              = "vyos_qemu_raw"
-  #   vm_name           = "${var.vm_name}-${source.name}.raw"
-  #   format            = "raw"
-  # }
-
 
   provisioner "shell-local" {
     inline = [
@@ -200,6 +195,14 @@ build {
     ]
   }
 
+  # configure vyos 
+  provisioner "shell" {
+    execute_command = "VYOS_RELEASE='${var.vyos_release}' {{ .Vars }} sudo -E bash '{{ .Path }}'"
+    scripts = [
+      "scripts/vyos/configure.sh",
+    ]
+  }
+
   # installing apt repos and custom packages
   provisioner "shell" {
     execute_command = "VYOS_RELEASE='${var.vyos_release}' CLOUD_INIT='${var.cloud_init}' {{ .Vars }} sudo -E bash '{{ .Path }}'"
@@ -212,13 +215,15 @@ build {
 
   # preparing cloud-init
   provisioner "shell" {
-    execute_command = "VYOS_RELEASE='${var.vyos_release}' CLOUD_INIT='${var.cloud_init}' {{ .Vars }} sudo -E bash '{{ .Path }}'"
+    execute_command = "VYOS_RELEASE='${var.vyos_release}' CLOUD_INIT='${var.cloud_init}' CLOUD_INIT_DATASOURCE='${var.cloud_init_datasource}' {{ .Vars }} sudo -E bash '{{ .Path }}'"
     scripts = [
       "scripts/vyos/cloud-init-debian.sh",
       "scripts/vyos/cloud-init-vyos.sh",
+      "scripts/vyos/cloud-init-datasource.sh",
     ]
   }
 
+  # if PLATFORM=qemu will install qemu packages
   provisioner "shell" {
     execute_command = "VYOS_RELEASE='${var.vyos_release}' PLATFORM='${var.platform}' {{ .Vars }} sudo -E bash '{{ .Path }}'"
     scripts = [
@@ -226,41 +231,28 @@ build {
     ]
   }
 
-  # cleanup before install
+  # if grub_serial=1 will install change grub to serial
   provisioner "shell" {
-    execute_command = "VYOS_RELEASE='${var.vyos_release}' {{ .Vars }} sudo -E bash '{{ .Path }}'"
+    execute_command = "VYOS_RELEASE='${var.vyos_release}' GRUB_SERIAL='${var.grub_serial}' {{ .Vars }} sudo -E bash '{{ .Path }}'"
     scripts = [
-      "scripts/vyos/vyos-install-pre.sh",
+      "scripts/vyos/grub-serial.sh"
     ]
   }
 
-  # install vyos on disk
-  # provisioner "shell" {
-  #   execute_command = "VYOS_RELEASE='${var.vyos_release}' VM_NAME='${var.vm_name}' VM_PASSWORD='${var.ssh_password}' {{ .Vars }} sudo -E bash '{{ .Path }}'"
-  #   scripts = [
-  #     "scripts/vyos/vyos-install.sh",
-  #   ]
-  # }
-
-  # cleanup after install
+  # cleanup 
   provisioner "shell" {
     execute_command = "VYOS_RELEASE='${var.vyos_release}' {{ .Vars }} sudo -E bash '{{ .Path }}'"
     scripts = [
-      "scripts/vyos/vyos-install-post.sh",
+      "scripts/vyos/cleanup.sh",
     ]
-  }
-  
-  post-processor "checksum" { 
-      checksum_types = ["sha256"]
-      keep_input_artifact = true
   }
 
   post-processors {
     post-processor "shell-local" { 
       inline = [
-        "cp '${local.output_dir}/${var.vm_name}-${source.name}.qcow2' iso/${var.vm_name}.qcow2"
+        #"cp '${local.output_dir}/${var.vm_name}-${source.name}.qcow2' /mnt/pve/svm_privateos_ic1a_main/template/iso/"
+        "cp 'iso/vyos-1.3.6.qcow2' /mnt/pve/svm_privateos_ic1a_main/template/iso/"
       ]
-      #only = ["vyos_qemu_qcow2"]
     }  
   }
 }

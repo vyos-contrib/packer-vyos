@@ -104,3 +104,9 @@ Use:
 # Build
 * ```make build```, for build images
 
+
+# Vars files
+- .env:                  building vars: control building process
+- vyos.pkrvars.hcl:      image vars: define image parameters - git default
+- local.pkrvars.hcl:     image vars: define image parameters - clone vyos.pkrvars.hcl to override it locally
+

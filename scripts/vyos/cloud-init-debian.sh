@@ -21,3 +21,9 @@ apt install -y \
     ifupdown
     
 systemctl enable cloud-init
+
+cat <<EOF > /etc/cloud/cloud.cfg.d/99_pve.cfg
+datasource_list: [ NoCloud, ConfigDrive ]
+EOF
+
+

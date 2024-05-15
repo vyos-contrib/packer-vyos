@@ -13,7 +13,7 @@ cat <<EOF > /home/vyos/cleanup-vyos.sh
 #!/bin/vbash
 source /opt/vyatta/etc/functions/script-template
 configure
-set system host-name host-name 'test'
+set system host-name 'test'
 commit
 save
 exit
@@ -44,6 +44,8 @@ rm -rf /tmp/*
 
 # removing log files
 rm -rf /var/log/*
+
+rm -rf /home/vyos/cleanup-vyos.sh
 
 # removing history
 export HISTFILE=0
