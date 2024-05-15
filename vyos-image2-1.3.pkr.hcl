@@ -7,9 +7,10 @@ packer {
   }
 }
 
+
 # dont edit those vars below, customize in local.auto.pkrvars.hcl using local.example.pkrvars.hcl
 variable "vm_name" {
-  default = "vyos-1.3.6"
+  default = "vyos-image-1.3.6"
 }
 
 variable "numvcpus" {
@@ -21,7 +22,7 @@ variable "memsize" {
 }
 
 variable "disk_size" {
-  default = "10240"
+  default = "1024"
 }
 
 variable "iso_checksum" {
@@ -97,14 +98,21 @@ variable "grub_serial" {
   default     = 1
 }
 
+# which kind of datasource should be used
+# nocloud_configdrive => use this as default, will turn on NoCloud, ConfigDrive on cloud-init datasource_list
+# blank - don't set default datasource_list
+variable "cloud_init_datasource" {
+  default = "nocloud_configdrive"
+}
+
 locals {
-  iso_path        = "iso/${var.vm_name}.iso"
-  output_dir      = "output/vyos-image1/${regex_replace(timestamp(), "[: ]", "-")}"
+  iso_path        = "iso/${var.vm_name}-build2.qcow2"  # not used at all since qemuargs -drive override it
+  output_dir      = "output/vyos-image2/${regex_replace(timestamp(), "[: ]", "-")}"
 }
 
 source "qemu" "vyos" {
   boot_command = [
-    "<enter>",
+    "<wait2s><enter>",
     "<wait${var.sleep_after_grub}s>", 
     "${var.ssh_username}<enter><wait>",
     "${var.ssh_password}<enter><wait>",
@@ -114,24 +122,13 @@ source "qemu" "vyos" {
     "set service ssh port '22'<enter><wait>",
     "commit<enter><wait>",
     "save<enter><wait>",
-    "exit<enter><wait>",
-    "install image<enter><wait3s>",
-    "Yes<enter><wait3s>",
-    "Auto<enter><wait3s>",
-    "<enter><wait3s>", # vda
-    "Yes<enter><wait5s>",
-    "<enter><wait15s>", #disk size
-    "${var.vm_name}<enter><wait10s>",
-    "<enter><wait2s>",
-    "${var.ssh_password}<enter><wait>",
-    "${var.ssh_password}<enter><wait>",
-    "<enter><wait5s>", 
+    "exit<enter><wait10s>", # wait 10 seconds before reboot (dev purposes)
   ]
 
   accelerator       = "kvm"
 
   iso_checksum      = var.iso_checksum
-  iso_url           = local.iso_path
+  iso_url           = local.iso_path          # not used at all since qemuargs -drive override it
 
   boot_wait         = var.boot_wait
 
@@ -168,7 +165,10 @@ source "qemu" "vyos" {
     ["-smp", "4"],
     ["-cpu", "host"],
     ["-netdev",  "user,id=user.0,", "hostfwd=tcp::{{ .SSHHostPort }}-:22"],
-    ["-device", "virtio-net,netdev=user.0"]
+    ["-device", "virtio-net,netdev=user.0"],
+    #["-drive", "file=iso/${var.vm_name}.qcow2,if=virtio,cache=writeback,discard=ignore,format=qcow2"]
+    #["-drive", "file=iso/${var.vm_name}.qcow2,if=none,id=drive-virtio0,format=qcow2,cache=writeback,aio=io_uring,detect-zeroes=on"]
+    ["-drive", "file=iso/${var.vm_name}-build2.qcow2,if=virtio,cache=writeback,format=qcow2,aio=io_uring,detect-zeroes=on"]
   ]
 }
 
@@ -183,34 +183,77 @@ build {
 
   provisioner "shell-local" {
     inline = [
-      "mkdir -p iso/",
       "mkdir -p ${local.output_dir}"
     ]
   }
 
-  # checksum
-  post-processors {
-    post-processor "checksum" {
-      checksum_types = ["sha256"]
-      keep_input_artifact = true
-    }
-
-    post-processor "shell-local" { 
-      inline = [
-        "mv packer_vyos_qemu_sha256.checksum iso/${var.vm_name}-build1.qcow2.checksum.tmp",
-        "awk '{print $1, \" ${var.vm_name}-build1.qcow2\"}' iso/${var.vm_name}-build1.qcow2.checksum.tmp > iso/${var.vm_name}-build1.qcow2.checksum",
-        "rm -f iso/${var.vm_name}-build1.qcow2.checksum.tmp",
-        "cat iso/*.checksum > iso/SHA256SUM",
-        "echo '${var.vm_name}' > .vm_name"
-      ]
-    }
+  # preparing provisioner
+  provisioner "shell" {
+    execute_command = "VYOS_RELEASE='${var.vyos_release}' {{ .Vars }} sudo -E bash '{{ .Path }}'"
+    scripts = [
+      "scripts/vyos/init.sh",
+    ]
   }
 
-  # copy from output to iso/ for vyos-image2.pkr.hcl customize
+  # configure vyos 
+  provisioner "shell" {
+    execute_command = "VYOS_RELEASE='${var.vyos_release}' {{ .Vars }} sudo -E bash '{{ .Path }}'"
+    scripts = [
+      "scripts/vyos/configure.sh",
+    ]
+  }
+
+  # installing apt repos and custom packages
+  provisioner "shell" {
+    execute_command = "VYOS_RELEASE='${var.vyos_release}' CLOUD_INIT='${var.cloud_init}' {{ .Vars }} sudo -E bash '{{ .Path }}'"
+    scripts = [
+      "scripts/vyos/apt-repo-debian.sh",
+      "scripts/vyos/apt-repo-vyos.sh",
+      "scripts/vyos/apt-install.sh",
+    ]
+  }
+
+  # preparing cloud-init
+  provisioner "shell" {
+    execute_command = "VYOS_RELEASE='${var.vyos_release}' CLOUD_INIT='${var.cloud_init}' CLOUD_INIT_DATASOURCE='${var.cloud_init_datasource}' {{ .Vars }} sudo -E bash '{{ .Path }}'"
+    scripts = [
+      "scripts/vyos/cloud-init-debian.sh",
+      "scripts/vyos/cloud-init-vyos.sh",
+      "scripts/vyos/cloud-init-datasource.sh",
+    ]
+  }
+
+  # if PLATFORM=qemu will install qemu packages
+  provisioner "shell" {
+    execute_command = "VYOS_RELEASE='${var.vyos_release}' PLATFORM='${var.platform}' {{ .Vars }} sudo -E bash '{{ .Path }}'"
+    scripts = [
+      "scripts/vyos/platform-qemu.sh"
+    ]
+  }
+
+  # if grub_serial=1 change grub default to serial
+  provisioner "shell" {
+    execute_command = "VYOS_RELEASE='${var.vyos_release}' GRUB_SERIAL='${var.grub_serial}' {{ .Vars }} sudo -E bash '{{ .Path }}'"
+    scripts = [
+      "scripts/vyos/grub-serial.sh"
+    ]
+  }
+
+  # image cleanup 
+  provisioner "shell" {
+    execute_command = "VYOS_RELEASE='${var.vyos_release}' {{ .Vars }} sudo -E bash '{{ .Path }}'"
+    scripts = [
+      "scripts/vyos/cleanup.sh",
+    ]
+  }
+
+  # copy qcow2 to final destination
   post-processors {
     post-processor "shell-local" { 
       inline = [
-        "cp '${local.output_dir}/${var.vm_name}-${source.name}.qcow2' iso/${var.vm_name}-build1.qcow2",
+        "cp 'iso/${var.vm_name}-build2.qcow2' iso/${var.vm_name}.img",
+        "cd iso/ && sha256sum ${var.vm_name}.img > ${var.vm_name}.img.checksum && cd ../" ,
+        "cat iso/*.checksum > iso/SHA256SUM",
         "rm -rf '${local.output_dir}'"
       ]
     }  

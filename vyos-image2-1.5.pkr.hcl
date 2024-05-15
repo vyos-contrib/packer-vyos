@@ -61,7 +61,7 @@ variable "cloud_init" {
 # circinus:   debian 12 (branch 1.5.*)
 # current:    debian 12 (branch 1.5.*)
 variable "vyos_release" {
-  default = "equuleus"
+  default = "circinus"
 }
 
 # build will fail if headless is false, only use headless false if you prepared X11/vnc setup
@@ -122,7 +122,7 @@ source "qemu" "vyos" {
     "set service ssh port '22'<enter><wait>",
     "commit<enter><wait>",
     "save<enter><wait>",
-    "exit<enter><wait10s>",
+    "exit<enter><wait10s>", # wait 10 seconds before reboot (dev purposes)
   ]
 
   accelerator       = "kvm"

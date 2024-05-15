@@ -42,52 +42,135 @@ help:
 # endif
 
 
-.PHONY: build1
-build1:
+.PHONY: build1-1.3
+build1-1.3:
 # if exist local.pkrvars.hcl load it
-ifneq ($(wildcard local.pkrvars.hcl),) 
+ifneq ($(wildcard local-vyos-1.3.pkrvars.hcl),) 
 	packer build \
-	-var-file=local.pkrvars.hcl \
+	-var-file=local-vyos-1.3.pkrvars.hcl \
 	-parallel-builds=0 \
-	vyos-image1.pkr.hcl
+	vyos-image1-1.3.pkr.hcl
 else
 	packer build \
-	-var-file=vyos.pkrvars.hcl \
+	-var-file=vyos-1.3.pkrvars.hcl \
 	-parallel-builds=0 \
-	vyos-image1.pkr.hcl
+	vyos-image1-1.3.pkr.hcl
+endif
+
+.PHONY: build1-1.4
+build1-1.4:
+# if exist local.pkrvars.hcl load it
+ifneq ($(wildcard local-vyos-1.4.pkrvars.hcl),) 
+	packer build \
+	-var-file=local-vyos-1.4.pkrvars.hcl \
+	-parallel-builds=0 \
+	vyos-image1-1.4.pkr.hcl
+else
+	packer build \
+	-var-file=vyos-1.4.pkrvars.hcl \
+	-parallel-builds=0 \
+	vyos-image1-1.4.pkr.hcl
 endif
 
 
-.PHONY: build2
-build2:
-	# create a copy of qcow2 - if build2 fail you can run again
+.PHONY: build1-1.5
+build1-1.5:
+# if exist local.pkrvars.hcl load it
+ifneq ($(wildcard local-vyos-1.5.pkrvars.hcl),) 
+	packer build \
+	-var-file=local-vyos-1.5.pkrvars.hcl \
+	-parallel-builds=0 \
+	vyos-image1-1.5.pkr.hcl
+else
+	packer build \
+	-var-file=vyos-1.5.pkrvars.hcl \
+	-parallel-builds=0 \
+	vyos-image1-1.5.pkr.hcl
+endif
+
+
+.PHONY: build2-1.3
+build2-1.3:
+# create a copy of qcow2 - if build2 fail you can run again
 	cp -f $(SRC_QCOW2) $(DST_QCOW2)
 	cp -f $(SRC_CHECKSUM) $(DST_CHECKSUM)
 	sed -i 's/$(VM_NAME)-build1.qcow2/$(VM_NAME)-build2.qcow2/' $(DST_CHECKSUM)
 	cat iso/*.checksum > iso/SHA256SUM
 
 # if exist local.pkrvars.hcl load it
-ifneq ($(wildcard local.pkrvars.hcl),) 
+ifneq ($(wildcard local-vyos-1.3.pkrvars.hcl),) 
 	packer build \
-	-var-file=local.pkrvars.hcl \
+	-var-file=local-vyos-1.3.pkrvars.hcl \
 	-parallel-builds=0 \
-	vyos-image2.pkr.hcl
+	vyos-image2-1.3.pkr.hcl
 else
 	packer build \
-	-var-file=vyos.pkrvars.hcl \
+	-var-file=vyos-1.3.pkrvars.hcl \
 	-parallel-builds=0 \
-	vyos-image2.pkr.hcl
+	vyos-image2-1.3.pkr.hcl
 endif
+
+
+.PHONY: build2-1.4
+build2-1.4:
+# create a copy of qcow2 - if build2 fail you can run again
+	cp -f $(SRC_QCOW2) $(DST_QCOW2)
+	cp -f $(SRC_CHECKSUM) $(DST_CHECKSUM)
+	sed -i 's/$(VM_NAME)-build1.qcow2/$(VM_NAME)-build2.qcow2/' $(DST_CHECKSUM)
+	cat iso/*.checksum > iso/SHA256SUM
+
+# if exist local.pkrvars.hcl load it
+ifneq ($(wildcard local-vyos-1.4.pkrvars.hcl),) 
+	packer build \
+	-var-file=local-vyos-1.4.pkrvars.hcl \
+	-parallel-builds=0 \
+	vyos-image2-1.4.pkr.hcl
+else
+	packer build \
+	-var-file=vyos-1.4.pkrvars.hcl \
+	-parallel-builds=0 \
+	vyos-image2-1.4.pkr.hcl
+endif
+
+.PHONY: build2-1.5
+build2-1.5:
+# create a copy of qcow2 - if build2 fail you can run again
+	cp -f $(SRC_QCOW2) $(DST_QCOW2)
+	cp -f $(SRC_CHECKSUM) $(DST_CHECKSUM)
+	sed -i 's/$(VM_NAME)-build1.qcow2/$(VM_NAME)-build2.qcow2/' $(DST_CHECKSUM)
+	cat iso/*.checksum > iso/SHA256SUM
+
+# if exist local.pkrvars.hcl load it
+ifneq ($(wildcard local-vyos-1.5.pkrvars.hcl),) 
+	packer build \
+	-var-file=local-vyos-1.5.pkrvars.hcl \
+	-parallel-builds=0 \
+	vyos-image2-1.5.pkr.hcl
+else
+	packer build \
+	-var-file=vyos-1.5.pkrvars.hcl \
+	-parallel-builds=0 \
+	vyos-image2-1.5.pkr.hcl
+endif
+
 
 .PHONY: init
 init:
-	packer init vyos-image1.pkr.hcl
-	packer init vyos-image2.pkr.hcl
+	packer init vyos-image1-1.3.pkr.hcl
+	packer init vyos-image1-1.4.pkr.hcl
+	packer init vyos-image1-1.5.pkr.hcl
+	packer init vyos-image2-1.3.pkr.hcl
+	packer init vyos-image2-1.4.pkr.hcl
+	packer init vyos-image2-1.5.pkr.hcl
 
 .PHONY: upgrade
 upgrade:
-	packer init -upgrade vyos-image1.pkr.hcl
-	packer init -upgrade vyos-image2.pkr.hcl
+	packer init -upgrade vyos-image1-1.3.pkr.hcl
+	packer init -upgrade vyos-image1-1.4.pkr.hcl
+	packer init -upgrade vyos-image1-1.5.pkr.hcl
+	packer init -upgrade vyos-image2-1.3.pkr.hcl
+	packer init -upgrade vyos-image2-1.4.pkr.hcl
+	packer init -upgrade vyos-image2-1.5.pkr.hcl
 
 .PHONY: clean
 clean:

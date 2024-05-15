@@ -1,5 +1,5 @@
 
-# Introdution
+# Introduction
 
 As VyOS is becoming more popular, building and automating images are essential. Packer is flexible and 
 can create custom images easily for any cloud and bare metal needs.
@@ -101,7 +101,7 @@ Use:
 * ```make upgrade```, when want to upgrade plugins
 
 ## Build images
-* ```make build1```
+* ```make build1-x.x```
     * build first stage image
     * create a new qcow2 image 
     * mount iso as cdrom
@@ -111,7 +111,7 @@ Use:
         * source: iso/vyos-1.3.6.iso
         * output: iso/vyos-1.3.6.qcow2
         * checksum: iso/SHA256SUM
-* ```make build2```
+* ```make build2-x.x```
     * build second stage image
     * use same qcow2 image from first stage
     * customize image
@@ -120,3 +120,33 @@ Use:
         * output: iso/vyos-1.3.6.qcow2
         * checksum: iso/SHA256SUM
     
+## Vyos releases supported
+* subscribe to [commercial edition](https://vyos.io/subscriptions/software) and use an LTS iso
+* use [rolling releases](https://vyos.net/get/nightly-builds/)
+* use [vyos-build](https://github.com/vyos/vyos-build) to build an iso from source from desired branch (1.3/equuleus, 1.4/sagitta, 1.5/circinus or current)
+
+### Build instructions for each release
+* common: use ubuntu 24 in a vm with virtualization host cpu instruction to build 
+```
+apt update
+# apt install -y make qemu-system # for headless=true
+apt install -y make qemu-system xvfb tigervnc-viewer # for headless=false
+make x11server # will turn on x11 server, you can use headless=false in pkrvars.hcl to build without vnc
+make init # install packer plugins
+```
+
+* 1.3 
+```
+make build1-1.3
+make build2-1.3
+```
+* 1.4
+```
+make build1-1.4
+make build2-1.4
+```
+* 1.5
+```
+make build1-1.5
+make build2-1.5
+```
