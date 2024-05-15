@@ -4,8 +4,8 @@
 As VyOS is becoming more popular, building and automating images are essential. Packer is flexible and 
 can create custom images easily for any cloud and bare metal needs.
 
-While VyOS has its own tools for creating images and building like [https://github.com/vyos/vyos-vm-images vyos-vm-images]
-or [https://github.com/vyos/vyos-build vyos-build], they lack features hashicorp packer can provide for automating images.
+While VyOS has its own tools for creating images and building like [vyos-vm-images](https://github.com/vyos/vyos-vm-images)
+or [vyos-build](https://github.com/vyos/vyos-build), they lack features hashicorp packer can provide for automating images.
 vyos-vm-images use ansible for build images, you can do almost any lower level customatization using this great tool. 
 vyos-build can be customizated and create custom images as well. 
 
@@ -18,17 +18,17 @@ Some notes about packer-vyos:
 ## How build process works:
 
 * you should provides an vyos.iso for builder
-** this iso can be a LTS/oficial one or nightly iso or you can use [https://docs.vyos.io/en/equuleus/contributing/build-vyos.html vyos-build] to build an iso
+* iso can be a LTS/oficial one or nightly iso or you can use [vyos-build](https://docs.vyos.io/en/equuleus/contributing/build-vyos.html) to build an iso
 * packer-vyos will install VyOS same way than manually installations
-** packer-vyos will start vyos.iso image in a qemu VM, VyOS will run in Live CD mode inside a qemu VM
-** packer will provide DHCP server, 1 ipv4, 1 gateway with NAT for qemu images
-** packer will provide a http server serving http/* folder files to VyOS, so we can use it to customize image
-** packer can provide for development with headless=false mode a vnc server, so we can see what is running on VM console
-** packer-vyos will send keyboard commands to VyOS Live CD like default vyos / vyos username/password
-** packer-vyos will configure networking to use dhcp ```set interface ethernet eth0 address dhcp```, than ```commit```
-** packer-vyos will customize images using scripts/vyos/*.sh according to rules inside vyos.pkr.hcl
-** after all scripts packer-vyos will install image to disk using VyOS ```install image```
-** packer will write image on output-* folder
+    * packer-vyos will start vyos.iso image in a qemu VM, VyOS will run in Live CD mode inside a qemu VM
+    * packer will provide DHCP server, 1 ipv4, 1 gateway with NAT for qemu images
+    * packer will provide a http server serving http/* folder files to VyOS, so we can use it to customize image
+    * packer can provide for development with headless=false mode a vnc server, so we can see what is running on VM console
+    * packer-vyos will send keyboard commands to VyOS Live CD like default vyos / vyos username/password
+    * packer-vyos will configure networking to use dhcp ```set interface ethernet eth0 address dhcp```, than ```commit```
+    * packer-vyos will customize images using scripts/vyos/*.sh according to rules inside vyos.pkr.hcl
+    * after all scripts packer-vyos will install image to disk using VyOS ```install image```
+    * packer will write image on output-* folder
 
 # Features
 
@@ -47,21 +47,21 @@ Some notes about packer-vyos:
 * set interface/gateway 
 * keep vyos/vyos user/password or customize it
 * it is possible to build custom images for bare metal, docker or any virtualization or cloud providers
-* also it is possible to integrate building process using other [https://developer.hashicorp.com/packer/integrations?components=builder packer builders] 
+* also it is possible to integrate building process using other [packer builders](https://developer.hashicorp.com/packer/integrations?components=builder) 
 besides qemu like aws, azure, cloudstack, docker, gcp, proxmox, vagrant, virtualbox, vmware and others
 
 # Requirements
 
 * packer-vyos is develop using ubuntu 24 LTS, but should run in debian, you can try other distros
 * packer-vyos use qemu, build inside a VM needs vmx/svm instruction. VMs inside proxmox need cpu=host
-** check if virtualization is enabled
-```
-egrep '(vmx|svm)' --color=always /proc/cpuinfo
-```
-** enabling neasted virtualization in proxmox:
-```
-qm set <vmid> --cpu host
-```
+    * check if virtualization is enabled
+    ```
+    egrep '(vmx|svm)' --color=always /proc/cpuinfo
+    ```
+    * enabling neasted virtualization in proxmox:
+    ```
+    qm set <vmid> --cpu host
+    ```
 * use root to build, for production use a dedicated vm only for packer build with cpu=host
 
 
@@ -88,25 +88,18 @@ For headless=false follow development instructions bellow.
 
 # Install
 
-# Usage
-* local.pkrvars.hcl if exists or will use default vars inside vyos.pkrvars.hcl if local not exists
-** local-example.pkrvars.hcl is provided in git repo as base of local.pkrvars.hcl
+## Usage
+* local.pkrvars.hcl if exists or will use default vars vyos.pkrvars.hcl if local not exists
 * if .env exists will load
-** example.env is provided in git repo as base of .env
+    * example.env is provided in git repo as base of .env. .env file has building vars, which control building process
 
-# Initialize packer
+
+## Initialize packer
 Packer need to load plugins first.
 
 Use:
 * ```make init```, for first time init
 * ```make upgrade```, when want to upgrade plugins
 
-# Build
+## Build
 * ```make build```, for build images
-
-
-# Vars files
-- .env:                  building vars: control building process
-- vyos.pkrvars.hcl:      image vars: define image parameters - git default
-- local.pkrvars.hcl:     image vars: define image parameters - clone vyos.pkrvars.hcl to override it locally
-
