@@ -86,13 +86,12 @@ For headless=false follow development instructions bellow.
 * in headless/remote ssh, before make build you need to start Xvfb. ```make x11server``` start X11 server, but you can put on init with something like https://gist.github.com/jterrace/2911875
 * for SSH access put in .env SLEEP_BEFORE_SHUTDOWN=600 to keep SSH on for 10 minutes after scripts run. Also put HOST_PORT_FIXED=2222 for open SSH in VM 127.0.0.1 in port 2222. ```ssh vyos@127.0.0.1 -p 2222``` default password is vyos.
 
-# Install
+# Usage
 
-## Usage
+## Edit Variables
 * local.pkrvars.hcl if exists or will use default vars vyos.pkrvars.hcl if local not exists
 * if .env exists will load
     * example.env is provided in git repo as base of .env. .env file has building vars, which control building process
-
 
 ## Initialize packer
 Packer need to load plugins first.
@@ -101,5 +100,23 @@ Use:
 * ```make init```, for first time init
 * ```make upgrade```, when want to upgrade plugins
 
-## Build
-* ```make build```, for build images
+## Build images
+* ```make build1```
+    * build first stage image
+    * create a new qcow2 image 
+    * mount iso as cdrom
+    * use vyos installer
+        * ```install image```
+    * files generated:
+        * source: iso/vyos-1.3.6.iso
+        * output: iso/vyos-1.3.6.qcow2
+        * checksum: iso/SHA256SUM
+* ```make build2```
+    * build second stage image
+    * use same qcow2 image from first stage
+    * customize image
+    * files generated:    
+        * source: iso/vyos-1.3.6.qcow2
+        * output: iso/vyos-1.3.6.qcow2
+        * checksum: iso/SHA256SUM
+    

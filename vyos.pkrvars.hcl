@@ -30,7 +30,7 @@ cloud_init_datasource = "nocloud_configdrive"
 # 
 # for proxmox:
 #   qm set 9000 --serial0 socket --vga serial0
-grub_serial         = true
+grub_serial         = 1
 
 # equuleus:   debian 11 (branch 1.3.*)
 # sagitta:    debian 12 (branch 1.4.*)
@@ -41,8 +41,8 @@ vyos_release        = "equuleus"
 # false will start vnc for console
 headless            = false
 
-# in MB (10GB x 1024 = 10240)
-disk_size           = 10240
+# in MB (10GB x 1024 = 10240, minimum 2048)
+disk_size           = 2048
 
 
 

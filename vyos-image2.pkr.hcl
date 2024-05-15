@@ -22,7 +22,7 @@ variable "memsize" {
 }
 
 variable "disk_size" {
-  default = "10240"
+  default = "1024"
 }
 
 variable "iso_checksum" {
@@ -94,8 +94,8 @@ variable "sleep_after_grub" {
 
 # set grub_serial=1 to turn grub default=1, ie: use serial console. it is need to adjust on hypervisor
 variable "grub_serial" {
-  type        = bool
-  default     = true
+  type        = string
+  default     = 1
 }
 
 # which kind of datasource should be used
@@ -106,14 +106,13 @@ variable "cloud_init_datasource" {
 }
 
 locals {
-  iso_path        = "iso/${var.vm_name}.vhd" 
-  #iso_path        = "iso/vyos-1.3.6.qcow2"
+  iso_path        = "iso/${var.vm_name}-build2.qcow2"  # not used at all since qemuargs -drive override it
   output_dir      = "output/vyos-image2/${regex_replace(timestamp(), "[: ]", "-")}"
 }
 
 source "qemu" "vyos" {
   boot_command = [
-    "<enter>",
+    "<wait2s><enter>",
     "<wait${var.sleep_after_grub}s>", 
     "${var.ssh_username}<enter><wait>",
     "${var.ssh_password}<enter><wait>",
@@ -123,14 +122,13 @@ source "qemu" "vyos" {
     "set service ssh port '22'<enter><wait>",
     "commit<enter><wait>",
     "save<enter><wait>",
-    "exit<enter><wait>",
+    "exit<enter><wait10s>",
   ]
 
   accelerator       = "kvm"
 
   iso_checksum      = var.iso_checksum
-  #iso_url           = fileexists(local.iso_path) ? local.iso_path : var.iso_url
-  iso_url           = local.iso_path
+  iso_url           = local.iso_path          # not used at all since qemuargs -drive override it
 
   boot_wait         = var.boot_wait
 
@@ -168,7 +166,9 @@ source "qemu" "vyos" {
     ["-cpu", "host"],
     ["-netdev",  "user,id=user.0,", "hostfwd=tcp::{{ .SSHHostPort }}-:22"],
     ["-device", "virtio-net,netdev=user.0"],
-    ["-drive", "file=iso/vyos-1.3.6.qcow2,if=virtio,cache=writeback,discard=ignore,format=qcow2"]
+    #["-drive", "file=iso/${var.vm_name}.qcow2,if=virtio,cache=writeback,discard=ignore,format=qcow2"]
+    #["-drive", "file=iso/${var.vm_name}.qcow2,if=none,id=drive-virtio0,format=qcow2,cache=writeback,aio=io_uring,detect-zeroes=on"]
+    ["-drive", "file=iso/${var.vm_name}-build2.qcow2,if=virtio,cache=writeback,format=qcow2,aio=io_uring,detect-zeroes=on"]
   ]
 }
 
@@ -231,7 +231,7 @@ build {
     ]
   }
 
-  # if grub_serial=1 will install change grub to serial
+  # if grub_serial=1 change grub default to serial
   provisioner "shell" {
     execute_command = "VYOS_RELEASE='${var.vyos_release}' GRUB_SERIAL='${var.grub_serial}' {{ .Vars }} sudo -E bash '{{ .Path }}'"
     scripts = [
@@ -239,7 +239,7 @@ build {
     ]
   }
 
-  # cleanup 
+  # image cleanup 
   provisioner "shell" {
     execute_command = "VYOS_RELEASE='${var.vyos_release}' {{ .Vars }} sudo -E bash '{{ .Path }}'"
     scripts = [
@@ -247,11 +247,14 @@ build {
     ]
   }
 
+  # copy qcow2 to final destination
   post-processors {
     post-processor "shell-local" { 
       inline = [
-        #"cp '${local.output_dir}/${var.vm_name}-${source.name}.qcow2' /mnt/pve/svm_privateos_ic1a_main/template/iso/"
-        "cp 'iso/vyos-1.3.6.qcow2' /mnt/pve/svm_privateos_ic1a_main/template/iso/"
+        "cp 'iso/${var.vm_name}-build2.qcow2' iso/${var.vm_name}.img",
+        "cd iso/ && sha256sum ${var.vm_name}.img > ${var.vm_name}.img.checksum && cd ../" ,
+        "cat iso/*.checksum > iso/SHA256SUM",
+        "rm -rf '${local.output_dir}'"
       ]
     }  
   }

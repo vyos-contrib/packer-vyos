@@ -13,7 +13,7 @@ cat <<EOF > /home/vyos/cleanup-vyos.sh
 #!/bin/vbash
 source /opt/vyatta/etc/functions/script-template
 configure
-set system host-name 'test'
+set system host-name 'vyosbuild'
 commit
 save
 exit

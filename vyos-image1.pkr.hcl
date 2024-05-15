@@ -93,14 +93,13 @@ variable "sleep_after_grub" {
 
 # set grub_serial=1 to turn grub default=1, ie: use serial console. it is need to adjust on hypervisor
 variable "grub_serial" {
-  type        = bool
-  default     = true
+  type        = string
+  default     = 1
 }
 
 locals {
   iso_path        = "iso/${var.vm_name}.iso"
   output_dir      = "output/vyos-image1/${regex_replace(timestamp(), "[: ]", "-")}"
-  #output_dir      = "build/image-install"
 }
 
 source "qemu" "vyos" {
@@ -115,29 +114,23 @@ source "qemu" "vyos" {
     "set service ssh port '22'<enter><wait>",
     "commit<enter><wait>",
     "save<enter><wait>",
-    # "exit<enter><wait>",
     "exit<enter><wait>",
     "install image<enter><wait3s>",
-    "Yes<enter><wait>",
-    "Auto<enter><wait>",
-    "<enter><wait>", # vda
+    "Yes<enter><wait3s>",
+    "Auto<enter><wait3s>",
+    "<enter><wait3s>", # vda
     "Yes<enter><wait5s>",
     "<enter><wait15s>", #disk size
     "${var.vm_name}<enter><wait10s>",
     "<enter><wait2s>",
     "${var.ssh_password}<enter><wait>",
     "${var.ssh_password}<enter><wait>",
-    "<enter><wait10s>", #vda
-    #"shutdown -h now<enter>"
-    #"reboot now<enter><wait60s>",
-    #"${var.ssh_username}<enter><wait>",
-    #"${var.ssh_password}<enter><wait>",
+    "<enter><wait5s>", 
   ]
 
   accelerator       = "kvm"
 
   iso_checksum      = var.iso_checksum
-  #iso_url           = fileexists(local.iso_path) ? local.iso_path : var.iso_url
   iso_url           = local.iso_path
 
   boot_wait         = var.boot_wait
@@ -190,24 +183,36 @@ build {
 
   provisioner "shell-local" {
     inline = [
-      #"rm -rf ${local.output_dir}",
+      "mkdir -p iso/",
       "mkdir -p ${local.output_dir}"
     ]
   }
 
-  post-processor "checksum" { 
-    checksum_types = ["sha256"]
-    keep_input_artifact = true
+  # checksum
+  post-processors {
+    post-processor "checksum" {
+      checksum_types = ["sha256"]
+      keep_input_artifact = true
+    }
+
+    post-processor "shell-local" { 
+      inline = [
+        "mv packer_vyos_qemu_sha256.checksum iso/${var.vm_name}-build1.qcow2.checksum.tmp",
+        "awk '{print $1, \" ${var.vm_name}-build1.qcow2\"}' iso/${var.vm_name}-build1.qcow2.checksum.tmp > iso/${var.vm_name}-build1.qcow2.checksum",
+        "rm -f iso/${var.vm_name}-build1.qcow2.checksum.tmp",
+        "cat iso/*.checksum > iso/SHA256SUM",
+        "echo '${var.vm_name}' > .vm_name"
+      ]
+    }
   }
 
+  # copy from output to iso/ for vyos-image2.pkr.hcl customize
   post-processors {
     post-processor "shell-local" { 
       inline = [
-        "cp '${local.output_dir}/${var.vm_name}-${source.name}.qcow2' iso/${var.vm_name}.qcow2",
-        "qemu-img convert -O vpc iso/${var.vm_name}.qcow2 iso/${var.vm_name}.vhd",
-        "cd iso && sha256sum * > SHA256SUM"
+        "cp '${local.output_dir}/${var.vm_name}-${source.name}.qcow2' iso/${var.vm_name}-build1.qcow2",
+        "rm -rf '${local.output_dir}'"
       ]
-      #only = ["vyos_qemu_qcow2"]
     }  
   }
 }

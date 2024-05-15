@@ -5,3 +5,6 @@ iso/*
 *.code-workspace
 dev/
 *.checksum
+.vm_name
+iso
+output

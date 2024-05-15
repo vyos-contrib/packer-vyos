@@ -11,6 +11,14 @@ DISPLAY=:99
 # export all
 export
 
+VM_NAME_FILE := .vm_name
+VM_NAME := $(shell cat $(VM_NAME_FILE))
+SRC_QCOW2 := iso/$(VM_NAME)-build1.qcow2
+DST_QCOW2 := iso/$(VM_NAME)-build2.qcow2
+SRC_CHECKSUM := iso/$(VM_NAME)-build1.qcow2.checksum
+DST_CHECKSUM := iso/$(VM_NAME)-build2.qcow2.checksum
+
+
 .PHONY: help
 help:
 	@echo "make working:"
@@ -23,6 +31,9 @@ help:
 	@echo "  make upgrade  - init 'packer init -upgrade'"
 	@echo "  make clean - remove output files"
 	@echo "  make x11server - start Xvfb X11 server on DISPLAY=:99. Require apt install xvfb"
+
+
+
 
 
 # ifneq ("$(wildcard .env)","") 
@@ -46,8 +57,15 @@ else
 	vyos-image1.pkr.hcl
 endif
 
+
 .PHONY: build2
 build2:
+	# create a copy of qcow2 - if build2 fail you can run again
+	cp -f $(SRC_QCOW2) $(DST_QCOW2)
+	cp -f $(SRC_CHECKSUM) $(DST_CHECKSUM)
+	sed -i 's/$(VM_NAME)-build1.qcow2/$(VM_NAME)-build2.qcow2/' $(DST_CHECKSUM)
+	cat iso/*.checksum > iso/SHA256SUM
+
 # if exist local.pkrvars.hcl load it
 ifneq ($(wildcard local.pkrvars.hcl),) 
 	packer build \
