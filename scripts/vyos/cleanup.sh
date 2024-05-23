@@ -5,31 +5,14 @@ set -x
 
 export DEBIAN_FRONTEND=noninteractive
 
-# delete interfaces ethernet eth0 address
-# delete interfaces ethernet eth0 hw-id
-# delete system name-server
+rm -rf /home/vyos/cleanup-vyos.sh
 
-cat <<EOF > /home/vyos/cleanup-vyos.sh
-#!/bin/vbash
-source /opt/vyatta/etc/functions/script-template
-configure
-set system host-name 'vyosbuild'
-commit
-save
-exit
-EOF
-chmod 0700 /home/vyos/cleanup-vyos.sh
-chown vyos:users /home/vyos/cleanup-vyos.sh
-su - vyos -c "/home/vyos/cleanup-vyos.sh"
+# fix config permissions since if we edited with root user
+# sudo chown -R root:vyattacfg /opt/vyatta/config/active/
 
 # reconfiguring ssh
 rm -f /etc/ssh/ssh_host_*
 dpkg-reconfigure openssh-server
-
-# those packages can't be removed since they are needed for next script vyos-install.sh
-# apt remove -y \
-#    python3-pexpect \
-#    expect
 
 # cleanup apt
 rm -f /etc/apt/sources.list.d/debian.list
@@ -44,8 +27,6 @@ rm -rf /tmp/*
 
 # removing log files
 rm -rf /var/log/*
-
-rm -rf /home/vyos/cleanup-vyos.sh
 
 # removing history
 export HISTFILE=0

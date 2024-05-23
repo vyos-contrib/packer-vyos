@@ -195,6 +195,14 @@ build {
     ]
   }
 
+  # prepare os - general customizations here
+  provisioner "shell" {
+    execute_command = "VYOS_RELEASE='${var.vyos_release}' {{ .Vars }} sudo -E bash '{{ .Path }}'"
+    scripts = [
+      "scripts/vyos/osprep.sh",
+    ]
+  }  
+
   # configure vyos 
   provisioner "shell" {
     execute_command = "VYOS_RELEASE='${var.vyos_release}' {{ .Vars }} sudo -E bash '{{ .Path }}'"
@@ -243,6 +251,7 @@ build {
   provisioner "shell" {
     execute_command = "VYOS_RELEASE='${var.vyos_release}' {{ .Vars }} sudo -E bash '{{ .Path }}'"
     scripts = [
+      "scripts/vyos/cleanup-vyos-configure.sh",
       "scripts/vyos/cleanup.sh",
     ]
   }

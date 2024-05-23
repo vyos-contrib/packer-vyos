@@ -10,7 +10,3 @@ apt install -y \
     vim \
     net-tools
 
-# install packer-vyos requirements (it will be removed at cleanup.sh)
-apt install -y \
-    python3-pexpect \
-    expect

@@ -5,7 +5,7 @@ set -x
 
 if [[ "${CLOUD_INIT}" == "debian" ||  "${CLOUD_INIT}" == "vyos" ]]; then
     if [[ "${CLOUD_INIT_DATASOURCE}" == "nocloud_configdrive" ]]; then
-        cat <<EOF > /etc/cloud/cloud.cfg.d/99_nocloud_configdrive.cfg
+        cat <<EOF > /etc/cloud/cloud.cfg.d/99-datasource.cfg
 datasource_list: [ NoCloud, ConfigDrive ]
 EOF
     else

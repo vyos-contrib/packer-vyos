@@ -19,11 +19,11 @@ apt install -y \
     cloud-init \
     cloud-utils \
     ifupdown
-    
+
 systemctl enable cloud-init
 
-cat <<EOF > /etc/cloud/cloud.cfg.d/99_pve.cfg
-datasource_list: [ NoCloud, ConfigDrive ]
+cat <<EOF > /etc/cloud/cloud.cfg.d/99-disable_network_config.cfg
+network: {config: disabled}
 EOF
 
-
+rm -rf /etc/network/interfaces.d/50-cloud-init || :

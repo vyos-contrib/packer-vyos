@@ -31,7 +31,7 @@ cloud_init_datasource = "nocloud_configdrive"
 # 
 # for proxmox:
 #   qm set 9000 --serial0 socket --vga serial0
-grub_serial         = 1
+grub_serial         = 0
 
 # equuleus:   debian 11 (branch 1.3.*)
 # sagitta:    debian 12 (branch 1.4.*)

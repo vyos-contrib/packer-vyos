@@ -21,4 +21,4 @@ EOF
 chmod 0700 /home/vyos/configure-vyos.sh
 chown vyos:users /home/vyos/configure-vyos.sh
 su - vyos -c "/home/vyos/configure-vyos.sh"
-
+rm -rf /home/vyos/configure-vyos.sh
